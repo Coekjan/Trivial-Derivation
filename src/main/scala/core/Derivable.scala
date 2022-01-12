@@ -58,6 +58,7 @@ object Derivable {
 
   case class Add(derivableList: List[Derivable]) extends Derivable {
     require(derivableList.nonEmpty)
+
     override def derive = Add(
       for (derivable <- derivableList) yield derivable.derive
     )
@@ -99,9 +100,13 @@ object Derivable {
 
   case class Mul(derivableList: List[Derivable]) extends Derivable {
     require(derivableList.nonEmpty)
+
     override def derive = Add(
       for (i <- derivableList.indices) yield derivableList(i).derive * Mul(
-        for (j <- derivableList.indices if i != j) yield derivableList(j)
+        (for (j <- derivableList.indices if i != j) yield derivableList(j)).toList match {
+          case Nil => List(1)
+          case l => l
+        }
       )
     )
 
