@@ -6,15 +6,15 @@ import scala.language.implicitConversions
 import scala.math.{BigInt, pow}
 
 trait Derivable extends Ordered[Derivable] {
-  private val order: Derivable => Int = {
-    case Con(_) => 0
-    case Var(_) => 1
-    case Pow(_, _) => 2
-    case Sin(_) => 3
-    case Cos(_) => 4
-    case Mul(_) => 5
-    case Add(_) => 6
-  }
+  private val order: Derivable => Int = d => List(
+    classOf[Con],
+    classOf[Var],
+    classOf[Pow],
+    classOf[Sin],
+    classOf[Cos],
+    classOf[Mul],
+    classOf[Add]
+  ).indexOf(d.getClass)
 
   def derive: Derivable
   def stringify: String
@@ -54,12 +54,10 @@ object Derivable {
   implicit def ConToInt(con: Con): Int = con match {
     case Con(value) if value.isValidInt => value.intValue
   }
-  implicit def derToCon(derivable: Derivable): Con = derivable match {
-    case Con(value) => Con(value)
-  }
   implicit private def indexedSeqToList[T](indexedSeq: IndexedSeq[T]): List[T] = indexedSeq.toList
 
   case class Add(derivableList: List[Derivable]) extends Derivable {
+    require(derivableList.nonEmpty)
     override def derive = Add(
       for (derivable <- derivableList) yield derivable.derive
     )
@@ -92,6 +90,7 @@ object Derivable {
           case (Con(value), coe) if value == BigInt(1) => Con(coe)
           case (der, _) => der
         }.toList match {
+        case Nil => 0
         case List(one) => one
         case list => Add(list.sorted)
       }
@@ -99,6 +98,7 @@ object Derivable {
   }
 
   case class Mul(derivableList: List[Derivable]) extends Derivable {
+    require(derivableList.nonEmpty)
     override def derive = Add(
       for (i <- derivableList.indices) yield derivableList(i).derive * Mul(
         for (j <- derivableList.indices if i != j) yield derivableList(j)
@@ -137,6 +137,7 @@ object Derivable {
             case (Con(value), coe) if value == BigInt(1) => Con(coe)
             case (der, _) => der
           }.toList match {
+          case Nil => 1
           case List(one) => one
           case list => Mul(list.sorted)
         }
@@ -144,7 +145,7 @@ object Derivable {
     }
 
     override def extractCoe = derivableList match {
-      case (con: Con) :: Nil => (con, Pow(0, 1))
+      case (con: Con) :: Nil => (con, Pow(1, 1))
       case (con: Con) :: one :: Nil => one match {
         case pow: Pow => (con, pow)
         case _ => (con, Pow(one, 1))
@@ -209,6 +210,7 @@ object Derivable {
   }
 
   case class Con(value: BigInt) extends Derivable {
+    def +(con: Con): Con = Con(value + con.value)
     def -(con: Con): Con = Con(value - con.value)
 
     override def derive = 0
