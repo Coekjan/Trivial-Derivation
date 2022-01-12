@@ -14,8 +14,8 @@ class DerivableTest extends AnyFunSuite {
   private val TEST_SYMPY_DIR = "./src/test/python"
   private val DERIVATION_TEST_SYMPY_PROC = s"python $TEST_SYMPY_DIR/derivation_test.py"
   private val SIMPLIFICATION_TEST_SYMPY_PROC = s"python $TEST_SYMPY_DIR/simplification_test.py"
-  val x = Var("x")
-  val testSet: List[Derivable] = List(
+  private val x = Var("x")
+  private val testSet: List[Derivable] = List(
     x + 2 * x,
     x * 3,
     x ~^ 2,
@@ -27,6 +27,13 @@ class DerivableTest extends AnyFunSuite {
     1 + 2 + 3 * Sin(x * Cos(x)) ~^ 2 + -4 * Sin(x * Cos(x)) ~^ 2
   )
 
+  private def strengthenTestSet: List[Derivable] = testSet.flatMap { d =>
+    val list = new ListBuffer[Derivable]
+    list += d
+    (0 until TEST_STRENGTH).foreach(_ => list += list.last.derive)
+    list
+  }
+
   @inline
   private def runCmd(cmd: String): (List[String], List[String], Int) = {
     val out = new ListBuffer[String]
@@ -35,7 +42,7 @@ class DerivableTest extends AnyFunSuite {
     (out.toList, err.toList, exitCode)
   }
 
-  def derivationTest(derivable: Derivable): (Derivable, Boolean, String) = {
+  private def derivationTest(derivable: Derivable): (Derivable, Boolean, String) = {
     val derivationResult = derivable.derive
     val (out, err, exitCode) = runCmd(
       s"$DERIVATION_TEST_SYMPY_PROC '${derivable.toString}' '${derivationResult.toString}'"
@@ -43,7 +50,7 @@ class DerivableTest extends AnyFunSuite {
     (derivationResult, exitCode == 0 && err.isEmpty && out.head == "True", out.last)
   }
 
-  def simplificationTest(derivable: Derivable): (Derivable, Boolean) = {
+  private def simplificationTest(derivable: Derivable): (Derivable, Boolean) = {
     val simplificationResult = derivable.simplify
     val (out, err, exitCode) = runCmd(
       s"$SIMPLIFICATION_TEST_SYMPY_PROC '${derivable.toString}' '${simplificationResult.toString}'"
@@ -52,12 +59,7 @@ class DerivableTest extends AnyFunSuite {
   }
 
   test("core.Derivable::derive") {
-    val failed = testSet.flatMap { d =>
-      val list = new ListBuffer[Derivable]
-      list += d
-      (0 until TEST_STRENGTH).foreach(_ => list += list.last.derive)
-      list
-    }
+    val failed = strengthenTestSet
       .map(d => Future {
         val judge = derivationTest(d)
         (d, judge._1, judge._2, judge._3)
@@ -78,12 +80,7 @@ class DerivableTest extends AnyFunSuite {
   }
 
   test("core.Derivation::simplify") {
-    val failed = testSet.flatMap { d =>
-      val list = new ListBuffer[Derivable]
-      list += d
-      (0 until TEST_STRENGTH).foreach(_ => list += list.last.derive)
-      list
-    }
+    val failed = strengthenTestSet
       .map(d => Future {
         val judge = simplificationTest(d)
         (d, judge._1, judge._2)
