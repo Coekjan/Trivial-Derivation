@@ -24,8 +24,9 @@ object ExpressionParser extends Parsers {
   private val whites = rep(WHITE_CHAR)
   private val plusMinus = PLUS | MINUS
 
+  private def top: ExpressionParser.Parser[Derivable] = phrase(expression) ^^ (f => f)
   private def expression: ExpressionParser.Parser[Add] =
-    phrase(whites ~ opt(plusMinus ~ whites) ~ term ~ rep(whites ~ plusMinus ~ whites ~ term) ~ whites) ^^ {
+    (whites ~ opt(plusMinus ~ whites) ~ term ~ rep(whites ~ plusMinus ~ whites ~ term) ~ whites) ^^ {
       case _ ~ sign ~ term ~ list ~ _ => sign match {
         case Some(MINUS ~ _) => Add((-1 * term) :: list.map(_._2))
         case _ => Add(term :: list.map(_._2))
@@ -70,7 +71,7 @@ object ExpressionParser extends Parsers {
   })
 
   def apply(tokens: Seq[ExpressionLexer.ExpressionToken]) = {
-    expression(new ExpressionTokenReader(tokens)) match {
+    top(new ExpressionTokenReader(tokens)) match {
       case NoSuccess(_, _) => Left(ExpressionParserError)
       case Success(result, _) => Right(result)
     }

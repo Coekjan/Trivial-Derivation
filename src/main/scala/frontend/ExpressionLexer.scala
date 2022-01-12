@@ -18,6 +18,7 @@ object ExpressionLexer extends RegexParsers {
   case object EXPONENT extends ExpressionToken
   case class INTEGER(value: BigInt) extends ExpressionToken
 
+  override def skipWhitespace = false
   private def whiteChar = """[\t ]""".r ^^^ WHITE_CHAR
   private def plus = """\+""".r ^^^ PLUS
   private def minus = """-""".r ^^^ MINUS
