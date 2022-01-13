@@ -27,10 +27,15 @@ object ExpressionParser extends Parsers {
   private def top: ExpressionParser.Parser[Derivable] = phrase(expression) ^^ (f => f)
   private def expression: ExpressionParser.Parser[Add] =
     (whites ~ opt(plusMinus ~ whites) ~ term ~ rep(whites ~ plusMinus ~ whites ~ term) ~ whites) ^^ {
-      case _ ~ sign ~ term ~ list ~ _ => sign match {
-        case Some(MINUS ~ _) => Add((-1 * term) :: list.map(_._2))
-        case _ => Add(term :: list.map(_._2))
-      }
+      case _ ~ sign ~ term ~ list ~ _ =>
+        val tailTerms = list.map {
+          case _ ~ MINUS ~ _ ~ term => -1 * term
+          case _ ~ _ ~ _ ~ term => term
+        }
+        sign match {
+          case Some(MINUS ~ _) => Add((-1 * term) :: tailTerms)
+          case _ => Add(term :: tailTerms)
+        }
     }
   private def term: ExpressionParser.Parser[Mul] =
     (opt(plusMinus ~ whites) ~ factor ~ rep(whites ~ MULT ~ whites ~ factor)) ^^ {
