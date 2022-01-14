@@ -1,7 +1,6 @@
 /.idea
 /.bsp
-
 /project
-!/project/.keep
-
 /target
+/venv
+/*.jar
