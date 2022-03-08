@@ -63,7 +63,13 @@ object Derivable {
       for (derivable <- derivableList) yield derivable.derive
     )
 
-    override def stringify = derivableList.map(_.stringify).reduce(_ + "+" + _)
+    override def stringify = derivableList.map(_.stringify).reduce[String] {
+      case (left, right) => left + (right match {
+        case s"-1*$function" => "-" + function
+        case s"-$function" => "-" + function
+        case pos => "+" + pos
+      })
+    }
 
     override def simplify = {
       derivableList.map(_.simplify)
